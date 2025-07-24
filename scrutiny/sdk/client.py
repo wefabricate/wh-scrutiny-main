@@ -2030,6 +2030,34 @@ class ScrutinyClient:
         assert cb_data.obj is not None
         return cb_data.obj
 
+    def get_available_device_links(self):
+        req = self._make_request(API.Command.Client2Api.GET_POSSIBLE_LINK_CONFIG)
+
+
+        # todo fix data types so the returned value works nicely
+        @dataclass
+        class Container:
+            obj: Optional[api_typing.S2C.GetPossibleLinkConfig]
+
+        cb_data: Container = Container(obj=None)  # Force pass by ref
+
+        def callback(state: CallbackState, response) -> None:
+            # self._logger.info(f'here!')
+            if response is not None and state == CallbackState.OK:
+                cb_data.obj = response['configs']
+            #     cb_data.obj = api_parser.parse_get_installed_sfds_response(
+            #         cast(api_typing.S2C.GetPossibleLinkConfig, response))
+
+        future = self._send(req, callback)
+        assert future is not None
+        future.wait()
+        if future.state != CallbackState.OK or cb_data.obj is None:
+            raise sdk.exceptions.OperationFailure(
+                f"Failed to get the list of available device links. {future.error_str}")
+
+        self._logger.info(f'Request handled')
+        return cb_data.obj
+
     def configure_device_link(self, link_type: sdk.DeviceLinkType, link_config: Optional[sdk.BaseLinkConfig]) -> None:
         """Configure the communication link between the Scrutiny server and the device remote device. 
         If the link is configured in a way that a Scrutiny device is accessible, the server will automatically
@@ -2046,31 +2074,32 @@ class ScrutinyClient:
         :raise OperationFailure: If the request to the server fails
         """
 
-        validation.assert_type(link_type, "link_type", sdk.DeviceLinkType)
+        # validation.assert_type(link_type, "link_type", sdk.DeviceLinkType)
         validation.assert_type(link_config, "link_config", sdk.BaseLinkConfig)
 
         assert link_type is not None
         assert link_config is not None
 
-        api_map: Dict["DeviceLinkType", Tuple[str, Type[Union[BaseLinkConfig, None]]]] = {
-            DeviceLinkType.NONE: ('none', sdk.NoneLinkConfig),
-            DeviceLinkType.Serial: ('serial', sdk.SerialLinkConfig),
-            DeviceLinkType.UDP: ('udp', sdk.UDPLinkConfig),
-            DeviceLinkType.TCP: ('tcp', sdk.TCPLinkConfig),
-            DeviceLinkType.RTT: ('rtt', sdk.RTTLinkConfig),
-            DeviceLinkType._Dummy: ('dummy', type(None))
-        }
+        # api_map: Dict["DeviceLinkType", Tuple[str, Type[Union[BaseLinkConfig, None]]]] = {
+        #     DeviceLinkType.NONE: ('none', sdk.NoneLinkConfig),
+        #     DeviceLinkType.Serial: ('serial', sdk.SerialLinkConfig),
+        #     DeviceLinkType.UDP: ('udp', sdk.UDPLinkConfig),
+        #     DeviceLinkType.TCP: ('tcp', sdk.TCPLinkConfig),
+        #     DeviceLinkType.RTT: ('rtt', sdk.RTTLinkConfig),
+        #     DeviceLinkType._Dummy: ('dummy', type(None))
+        # }
+        #
+        # todo check for known links
+        # if link_type not in api_map:
+        #     raise ValueError(f"Unsupported link type : {link_type.name}")
 
-        if link_type not in api_map:
-            raise ValueError(f"Unsupported link type : {link_type.name}")
+        # link_type_api_name, config_type = api_map[link_type]
 
-        link_type_api_name, config_type = api_map[link_type]
-
-        if not isinstance(link_config, config_type):
-            raise TypeError(f'link_config must be of type {config_type} when link_type is {link_type.name}. Got {link_type.__class__.__name__}')
+        # if not isinstance(link_config, config_type):
+        #     raise TypeError(f'link_config must be of type {config_type} when link_type is {link_type.name}. Got {link_type.__class__.__name__}')
 
         req = self._make_request(API.Command.Client2Api.SET_LINK_CONFIG, {
-            'link_type': link_type_api_name,
+            'link_type': link_type,
             'link_config': link_config._to_api_format()
         })
 

@@ -22,6 +22,7 @@ __all__ = [
     'SFDMetadata',
     'SFDInfo',
     'BaseLinkConfig',
+    'DynamicLinkConfig',
     'UDPLinkConfig',
     'TCPLinkConfig',
     'SerialLinkConfig',
@@ -122,23 +123,23 @@ class ValueStatus(enum.Enum):
 
         return error
 
-
-class DeviceLinkType(enum.Enum):
-    """(Enum) The type of communication link used between the server and the device"""
-
-    _Dummy = -1
-    NONE = 0
-    """No link. No device communication will happen"""
-    UDP = 1
-    """UDP/IP socket"""
-    TCP = 2
-    """TCP/IP Socket"""
-    Serial = 3
-    """Serial port"""
-    RTT = 4
-    """Segger JLink Real-Time Transfer port"""
-    # CAN = 5 # Todo
-    # SPI = 6 # Todo
+type DeviceLinkType = str
+# class DeviceLinkType(enum.Enum):
+#     """(Enum) The type of communication link used between the server and the device"""
+#
+#     _Dummy = -1
+#     NONE = 0
+#     """No link. No device communication will happen"""
+#     UDP = 1
+#     """UDP/IP socket"""
+#     TCP = 2
+#     """TCP/IP Socket"""
+#     Serial = 3
+#     """Serial port"""
+#     RTT = 4
+#     """Segger JLink Real-Time Transfer port"""
+#     # CAN = 5 # Todo
+#     # SPI = 6 # Todo
 
 
 class DataloggingListChangeType(enum.Enum):
@@ -313,6 +314,25 @@ class BaseLinkConfig(abc.ABC):
     def _to_api_format(self) -> Dict[str, Any]:
         raise NotImplementedError("Abstract class")
 
+class DynamicLinkConfig(BaseLinkConfig):
+    def __init__(self, **kwargs):
+        self._fields = kwargs
+
+    def __getattr__(self, name):
+        # Allow attribute-style access
+        return self._fields.get(name)
+
+    def __setattr__(self, name, value):
+        if name == "_fields":
+            super().__setattr__(name, value)
+        else:
+            self._fields[name] = value
+
+    def _to_api_format(self) -> Dict[str, Any]:
+        return self._fields.copy()
+
+    def as_dict(self) -> Dict[str, Any]:
+        return self._fields.copy()
 
 @dataclass(frozen=True)
 class NoneLinkConfig(BaseLinkConfig):
@@ -532,7 +552,7 @@ SupportedLinkConfig = Union[UDPLinkConfig, TCPLinkConfig, SerialLinkConfig, RTTL
 class DeviceLinkInfo:
     """(Immutable struct) Represent a communication link between the server and a device"""
 
-    type: DeviceLinkType
+    type: str
     """Type of communication channel between the server and the device"""
     config: Optional[SupportedLinkConfig]
     """A channel type specific configuration"""

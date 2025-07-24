@@ -789,7 +789,7 @@ class ServerManager:
         # This runs in the UI thread
         entry = self._client_request_store.get(store_id)
         if entry is None:
-            self._logger.debug("Client request compelted, but entry not part of the store.")
+            self._logger.debug("Client request completed, but entry not part of the store.")
             return
 
         if self._exit_in_progress:

@@ -352,14 +352,35 @@ class StatusBar(QStatusBar):
     def _device_link_click_func(self) -> None:
         """ Called when the suer click on the device link label in the status bar. 
         Opens a configuration dialog"""
+        # TODO: get possible link configs and pass them to the dialog
         info = self._server_manager.get_server_info()
-        if info is None:
-            self._device_config_dialog.swap_config_pane(DeviceLinkType.NONE)
-        else:
-            self._device_config_dialog.set_config(info.device_link.type, cast(sdk.BaseLinkConfig, info.device_link.config))
-            self._device_config_dialog.swap_config_pane(info.device_link.type)
 
-        self._device_config_dialog.show()
+        if info is None:
+            self._device_config_dialog.swap_config_pane('')
+            self._device_config_dialog.show()
+
+        else:
+
+            def request_available_links(client: ScrutinyClient) -> None:
+                return client.get_available_device_links()
+
+
+            def ui_callback(value , exception: Optional[Exception]) -> None:
+                self._logger.info(f'Callback!: {exception}')
+                # self._device_config_dialog.set_config(info.device_link.type,
+                #                                       cast(sdk.BaseLinkConfig, info.device_link.config))
+                # self._device_config_dialog.swap_config_pane(info.device_link.type)
+                self._device_config_dialog.set_link_options(value)
+                self._device_config_dialog.show()
+
+            self._server_manager.schedule_client_request(request_available_links, ui_callback)
+
+
+
+
+
+
+
 
     def _loaded_sfd_click_func(self) -> None:
         """Called when the user click on the sfd label"""
@@ -442,23 +463,23 @@ class StatusBar(QStatusBar):
     def set_device_comm_link_label(self, link_type: DeviceLinkType, operational: bool, config: Optional[BaseLinkConfig]) -> None:
         """Set the device link label with the actually loaded link on the server side"""
         prefix = "Link:"
-        if link_type == DeviceLinkType.NONE:
+        if len(link_type) == 0 or link_type is None:
             self._device_comm_link_label.set_text(f"{prefix} None")
-        elif link_type == DeviceLinkType.TCP:
-            config = cast(sdk.TCPLinkConfig, config)
-            self._device_comm_link_label.set_text(f"{prefix} TCP {config.host}:{config.port}")
-        elif link_type == DeviceLinkType.UDP:
-            config = cast(sdk.UDPLinkConfig, config)
-            self._device_comm_link_label.set_text(f"{prefix} UDP {config.host}:{config.port}")
-        elif link_type == DeviceLinkType.Serial:
-            config = cast(sdk.SerialLinkConfig, config)
-            line = f"{config.port}@{config.baudrate} [D:{config.databits.get_numerical()} S:{config.stopbits.get_numerical()} P:{config.parity.get_displayable_name()}]"
-            self._device_comm_link_label.set_text(f"{prefix} Serial {line}")
-        elif link_type == DeviceLinkType.RTT:
-            config = cast(sdk.RTTLinkConfig, config)
-            self._device_comm_link_label.set_text(f"{prefix} RTT {config.jlink_interface.name} ({config.target_device})")
+        # elif link_type == DeviceLinkType.TCP:
+        #     config = cast(sdk.TCPLinkConfig, config)
+        #     self._device_comm_link_label.set_text(f"{prefix} TCP {config.host}:{config.port}")
+        # elif link_type == DeviceLinkType.UDP:
+        #     config = cast(sdk.UDPLinkConfig, config)
+        #     self._device_comm_link_label.set_text(f"{prefix} UDP {config.host}:{config.port}")
+        # elif link_type == DeviceLinkType.Serial:
+        #     config = cast(sdk.SerialLinkConfig, config)
+        #     line = f"{config.port}@{config.baudrate} [D:{config.databits.get_numerical()} S:{config.stopbits.get_numerical()} P:{config.parity.get_displayable_name()}]"
+        #     self._device_comm_link_label.set_text(f"{prefix} Serial {line}")
+        # elif link_type == DeviceLinkType.RTT:
+        #     config = cast(sdk.RTTLinkConfig, config)
+        #     self._device_comm_link_label.set_text(f"{prefix} RTT {config.jlink_interface.name} ({config.target_device})")
         else:
-            raise NotImplementedError("Unsupported device link type")
+            self._device_comm_link_label.set_text(f"{prefix} {link_type}")
 
         self._device_comm_link_label.set_color(StatusBarLabel.Color.GREEN if operational else StatusBarLabel.Color.RED)
 
@@ -528,7 +549,7 @@ class StatusBar(QStatusBar):
                     self._server_connect_action.setEnabled(True)
                 self.set_server_label_value(ServerLabelValue.Disconnected)
             self.set_device_label(DeviceCommState.NA)
-            self.set_device_comm_link_label(DeviceLinkType.NONE, False, sdk.NoneLinkConfig())
+            self.set_device_comm_link_label('', False, sdk.NoneLinkConfig())
             self.set_sfd_label(value=None)
             self.set_datalogging_label(DataloggingInfo(state=DataloggingState.NA, completion_ratio=None))
         else:   # Server manager is running healthy
@@ -552,7 +573,7 @@ class StatusBar(QStatusBar):
                 self._device_details_action.setEnabled(False)
                 self._datalogger_status_label.setEnabled(False)
                 self.set_device_label(DeviceCommState.NA)
-                self.set_device_comm_link_label(DeviceLinkType.NONE, False, sdk.NoneLinkConfig())
+                self.set_device_comm_link_label('', False, sdk.NoneLinkConfig())
                 self.set_sfd_label(value=None)
                 self.set_datalogging_label(DataloggingInfo(state=DataloggingState.NA, completion_ratio=None))
                 self._sfd_status_label.setEnabled(False)

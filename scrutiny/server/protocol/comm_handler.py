@@ -21,6 +21,7 @@ import threading
 from copy import copy
 from binascii import hexlify
 from dataclasses import dataclass
+from importlib.metadata import entry_points
 
 from scrutiny import tools
 from scrutiny.server.device.links import AbstractLink, LinkConfig
@@ -121,6 +122,40 @@ class CommHandler:
         self._rx_datarate_measurement = VariableRateExponentialAverager(time_estimation_window=0.1, tau=0.5, near_zero=1)
         self._request_per_sec_measurement = VariableRateExponentialAverager(time_estimation_window=0.1, tau=0.5, near_zero=0.1)
 
+        self._available_plugin_links = {}
+        self._find_plugin_links()
+
+    def _verify_user_interface_specification(self, user_interface_spec: dict, config: LinkConfig) -> bool:
+        members = list(config.__annotations__.keys())
+        for param in user_interface_spec:
+            if param not in members:
+                self._logger.error(f'User interface element {param} is not defined in the config structure.')
+                return False
+
+        return True
+
+
+    def _find_plugin_links(self):
+        plugin_entry_points = entry_points(group='scrutinydebugger.device.links')
+        if len(plugin_entry_points) == 0:
+            self._logger.info("No plugins that provide device links were found.")
+            return
+
+        for entry_point in plugin_entry_points:
+            try:
+                loaded_plugin = entry_point.load()()
+                if issubclass(loaded_plugin[0], AbstractLink) and self._verify_user_interface_specification(loaded_plugin[2]['params'], loaded_plugin[1]):
+                    self._available_plugin_links[entry_point.name] = loaded_plugin
+                    self._logger.info(f"Plugin '{entry_point.name}' loaded.")
+                else:
+                    self._logger.error(f'Failed to load plugin entry point {entry_point.name} due to a type mismatch.')
+            except Exception:
+                self._logger.error(f'Failed to import plugin entry point {entry_point.name}')
+
+
+    def get_available_link_names(self) -> List[str]:
+        return ['udp', 'serial', 'rtt', 'dummy'] + list(self._available_plugin_links.keys())
+
     def _rx_thread_task(self) -> None:
         self._logger.debug("RX thread started")
         self._rx_thread_started.set()
@@ -202,7 +237,7 @@ class CommHandler:
         """Link Factory that returns the correct Link class based on a type given as string."""
         link_class: Type[AbstractLink]
 
-        if link_type == 'udp':
+        if link_type == 'UDP':
             from scrutiny.server.device.links.udp_link import UdpLink
             link_class = UdpLink
         elif link_type == 'serial':

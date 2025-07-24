@@ -529,102 +529,102 @@ def parse_inform_server_status(response: api_typing.S2C.InformServerStatus) -> s
     _check_response_dict(cmd, response, 'device_comm_link.link_type', str)
     _check_response_dict(cmd, response, 'device_comm_link.link_operational', bool)
 
-    def _link_type(api_val: api_typing.LinkType) -> sdk.DeviceLinkType:
-        if api_val == 'none':
-            return sdk.DeviceLinkType.NONE
-        if api_val == 'serial':
-            return sdk.DeviceLinkType.Serial
-        if api_val == 'dummy':
-            return sdk.DeviceLinkType._Dummy
-        if api_val == 'udp':
-            return sdk.DeviceLinkType.UDP
-        if api_val == 'rtt':
-            return sdk.DeviceLinkType.RTT
-        raise sdk.exceptions.BadResponseError(f'Unsupported device link type "{api_val}"')
+    # def _link_type(api_val: api_typing.LinkType) -> sdk.DeviceLinkType:
+    #     if api_val == 'none':
+    #         return sdk.DeviceLinkType.NONE
+    #     if api_val == 'serial':
+    #         return sdk.DeviceLinkType.Serial
+    #     if api_val == 'dummy':
+    #         return sdk.DeviceLinkType._Dummy
+    #     if api_val == 'udp':
+    #         return sdk.DeviceLinkType.UDP
+    #     if api_val == 'rtt':
+    #         return sdk.DeviceLinkType.RTT
+    #     raise sdk.exceptions.BadResponseError(f'Unsupported device link type "{api_val}"')
 
-    link_type = _link_type(response['device_comm_link']['link_type'])
+    link_type = response['device_comm_link']['link_type']
     link_operational = response['device_comm_link']['link_operational']
     link_config: Optional[sdk.SupportedLinkConfig]
-    if link_type == sdk.DeviceLinkType.NONE:
-        link_config = sdk.NoneLinkConfig()
-    elif link_type == sdk.DeviceLinkType.UDP:
-        udp_config = cast(api_typing.UdpLinkConfig, response['device_comm_link']['link_config'])
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.host', str)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.port', int)
-        link_config = sdk.UDPLinkConfig(
-            host=udp_config['host'],
-            port=udp_config['port'],
-        )
-    elif link_type == sdk.DeviceLinkType.Serial:
-        serial_config = cast(api_typing.SerialLinkConfig, response['device_comm_link']['link_config'])
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.portname', str)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.baudrate', int)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.stopbits', str)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.databits', int)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.parity', str)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.start_delay', (int, float))
-
-        STOPBIT_TO_SDK = {
-            '1': sdk.SerialLinkConfig.StopBits.ONE,
-            '1.5': sdk.SerialLinkConfig.StopBits.ONE_POINT_FIVE,
-            '2': sdk.SerialLinkConfig.StopBits.TWO
-        }
-
-        PARITY_TO_SDK = {
-            'none': sdk.SerialLinkConfig.Parity.NONE,
-            'even': sdk.SerialLinkConfig.Parity.EVEN,
-            'odd': sdk.SerialLinkConfig.Parity.ODD,
-            'mark': sdk.SerialLinkConfig.Parity.MARK,
-            'space': sdk.SerialLinkConfig.Parity.SPACE
-        }
-
-        DATABITS_TO_SDK = {
-            5: sdk.SerialLinkConfig.DataBits.FIVE,
-            6: sdk.SerialLinkConfig.DataBits.SIX,
-            7: sdk.SerialLinkConfig.DataBits.SEVEN,
-            8: sdk.SerialLinkConfig.DataBits.EIGHT,
-        }
-
-        api_stopbits = serial_config['stopbits']
-        if api_stopbits not in STOPBIT_TO_SDK:
-            raise sdk.exceptions.BadResponseError(f'Unsupported stop bit value "{api_stopbits}" in message {cmd}')
-
-        api_parity = serial_config['parity']
-        if api_parity not in PARITY_TO_SDK:
-            raise sdk.exceptions.BadResponseError(f'Unsupported parity value "{api_parity}" in message {cmd}')
-
-        api_databits = serial_config['databits']
-        if api_databits not in DATABITS_TO_SDK:
-            raise sdk.exceptions.BadResponseError(f'Unsupported number of databits value "{api_databits}" in message {cmd}')
-
-        start_delay = float(serial_config['start_delay'])
-        if start_delay < 0:
-            raise sdk.exceptions.BadResponseError(f'Unsupported start delay value "{start_delay}" in message {cmd}')
-
-        link_config = sdk.SerialLinkConfig(
-            port=serial_config['portname'],
-            baudrate=serial_config['baudrate'],
-            stopbits=STOPBIT_TO_SDK[api_stopbits],
-            parity=PARITY_TO_SDK[api_parity],
-            databits=DATABITS_TO_SDK[api_databits],
-            start_delay=serial_config['start_delay']
-        )
-    elif link_type == sdk.DeviceLinkType.RTT:
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.jlink_interface', str)
-        _check_response_dict(cmd, response, 'device_comm_link.link_config.target_device', str)
-        rtt_config = cast(api_typing.RttLinkConfig, response['device_comm_link']['link_config'])
-        interface_name = rtt_config['jlink_interface']
-        try:
-            jlink_interface = sdk.RTTLinkConfig.JLinkInterface(interface_name)
-        except ValueError:
-            raise sdk.exceptions.BadResponseError(f'Invalid JLink Interface "{interface_name}"')
-
-        link_config = sdk.RTTLinkConfig(
-            target_device=rtt_config['target_device'],
-            jlink_interface=jlink_interface
-        )
-    else:
-        raise RuntimeError(f'Unsupported device link type "{link_type}"')
+    # if link_type == sdk.DeviceLinkType.NONE:
+    link_config = sdk.NoneLinkConfig()
+    # elif link_type == sdk.DeviceLinkType.UDP:
+    #     udp_config = cast(api_typing.UdpLinkConfig, response['device_comm_link']['link_config'])
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.host', str)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.port', int)
+    #     link_config = sdk.UDPLinkConfig(
+    #         host=udp_config['host'],
+    #         port=udp_config['port'],
+    #     )
+    # elif link_type == sdk.DeviceLinkType.Serial:
+    #     serial_config = cast(api_typing.SerialLinkConfig, response['device_comm_link']['link_config'])
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.portname', str)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.baudrate', int)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.stopbits', str)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.databits', int)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.parity', str)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.start_delay', (int, float))
+    #
+    #     STOPBIT_TO_SDK = {
+    #         '1': sdk.SerialLinkConfig.StopBits.ONE,
+    #         '1.5': sdk.SerialLinkConfig.StopBits.ONE_POINT_FIVE,
+    #         '2': sdk.SerialLinkConfig.StopBits.TWO
+    #     }
+    #
+    #     PARITY_TO_SDK = {
+    #         'none': sdk.SerialLinkConfig.Parity.NONE,
+    #         'even': sdk.SerialLinkConfig.Parity.EVEN,
+    #         'odd': sdk.SerialLinkConfig.Parity.ODD,
+    #         'mark': sdk.SerialLinkConfig.Parity.MARK,
+    #         'space': sdk.SerialLinkConfig.Parity.SPACE
+    #     }
+    #
+    #     DATABITS_TO_SDK = {
+    #         5: sdk.SerialLinkConfig.DataBits.FIVE,
+    #         6: sdk.SerialLinkConfig.DataBits.SIX,
+    #         7: sdk.SerialLinkConfig.DataBits.SEVEN,
+    #         8: sdk.SerialLinkConfig.DataBits.EIGHT,
+    #     }
+    #
+    #     api_stopbits = serial_config['stopbits']
+    #     if api_stopbits not in STOPBIT_TO_SDK:
+    #         raise sdk.exceptions.BadResponseError(f'Unsupported stop bit value "{api_stopbits}" in message {cmd}')
+    #
+    #     api_parity = serial_config['parity']
+    #     if api_parity not in PARITY_TO_SDK:
+    #         raise sdk.exceptions.BadResponseError(f'Unsupported parity value "{api_parity}" in message {cmd}')
+    #
+    #     api_databits = serial_config['databits']
+    #     if api_databits not in DATABITS_TO_SDK:
+    #         raise sdk.exceptions.BadResponseError(f'Unsupported number of databits value "{api_databits}" in message {cmd}')
+    #
+    #     start_delay = float(serial_config['start_delay'])
+    #     if start_delay < 0:
+    #         raise sdk.exceptions.BadResponseError(f'Unsupported start delay value "{start_delay}" in message {cmd}')
+    #
+    #     link_config = sdk.SerialLinkConfig(
+    #         port=serial_config['portname'],
+    #         baudrate=serial_config['baudrate'],
+    #         stopbits=STOPBIT_TO_SDK[api_stopbits],
+    #         parity=PARITY_TO_SDK[api_parity],
+    #         databits=DATABITS_TO_SDK[api_databits],
+    #         start_delay=serial_config['start_delay']
+    #     )
+    # elif link_type == sdk.DeviceLinkType.RTT:
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.jlink_interface', str)
+    #     _check_response_dict(cmd, response, 'device_comm_link.link_config.target_device', str)
+    #     rtt_config = cast(api_typing.RttLinkConfig, response['device_comm_link']['link_config'])
+    #     interface_name = rtt_config['jlink_interface']
+    #     try:
+    #         jlink_interface = sdk.RTTLinkConfig.JLinkInterface(interface_name)
+    #     except ValueError:
+    #         raise sdk.exceptions.BadResponseError(f'Invalid JLink Interface "{interface_name}"')
+    #
+    #     link_config = sdk.RTTLinkConfig(
+    #         target_device=rtt_config['target_device'],
+    #         jlink_interface=jlink_interface
+    #     )
+    # else:
+    #     raise RuntimeError(f'Unsupported device link type "{link_type}"')
 
     _check_response_dict(cmd, response, 'device_comm_link.link_type', str)
     device_link = sdk.DeviceLinkInfo(

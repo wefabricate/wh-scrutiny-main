@@ -849,12 +849,13 @@ class API:
 
         self.send_server_status_to_all_clients()
 
+#here!
     #  todo
     def process_get_possible_link_config(self, conn_id: str, req: api_typing.C2S.GetPossibleLinkConfig) -> None:
         configs = []
 
         udp_config = {
-            'name': 'udp',
+            'name': 'UDP',
             'params': {
                 'host': {
                     'description': 'UDP Hostname or IP address',
@@ -871,6 +872,49 @@ class API:
         }
 
         configs.append(udp_config)
+
+        tcp_config = {
+            'name': 'TCP',
+            'params': {
+                'host': {
+                    'description': 'TCP Hostname or IP address',
+                    'default': 'localhost',
+                    'type': 'string'
+                },
+                'port': {
+                    'description': 'TCP port',
+                    'default': 8765,
+                    'type': 'int',
+                    'range': {'min': 0, 'max': 65535}
+                }
+            }
+        }
+
+        configs.append(tcp_config)
+
+        rtt_config = {
+            'name': 'RTT',
+            'params': {
+                'interface':{
+                    'description': 'Interface',
+                    'type': 'select',
+                    'text-edit': False,
+                    'values': [
+                        'SWD',
+                        'JTAG',
+                        'ICSP',
+                        'FINE',
+                        'SPI',
+                        'C2'
+                    ]
+                },
+                'target_device':{
+                    'description': 'Target device',
+                    'type': 'string'
+                }
+            }
+        }
+        configs.append(rtt_config)
 
         try:
             import serial.tools.list_ports  # type: ignore
