@@ -228,24 +228,65 @@ class SerialLink(AbstractLink):
 
     @staticmethod
     def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
+        import serial.tools.list_ports  # type: ignore
+        ports = serial.tools.list_ports.comports()
+        portname_list: List[str] = [] if ports is None else [port.device for port in ports]
+
         spec = sdk.LinkUserInterfaceSpecification(
             fields={
-                "host": sdk.LinkUserInterfaceField(
-                    description="UDP Hostname or IP address",
-                    type=sdk.LinkUserInterfaceFieldTypes.TEXT,
-                    default="localhost",
+                "portname": sdk.LinkUserInterfaceField(
+                    description="Serial port name",
+                    type=sdk.LinkUserInterfaceFieldTypes.EDITABLE_SELECTOR,
+                    default=None,
                     min_value=None,
                     max_value=None,
-                    options=[]
+                    options=portname_list,
                 ),
-                "port": sdk.LinkUserInterfaceField(
-                    description="UDP port",
-                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
-                    default=8765,
+                "baudrate": sdk.LinkUserInterfaceField(
+                    description="Speed transmission in Baud/s (bit/s)",
+                    type=sdk.LinkUserInterfaceFieldTypes.EDITABLE_SELECTOR,
+                    default=115200,
                     min_value=None,
                     max_value=None,
-                    options=[]
+                    options=[
+                        1200,
+                        2400,
+                        4800,
+                        9600,
+                        14400,
+                        19200,
+                        28800,
+                        38400,
+                        57600,
+                        115200,
+                        230400,
+                    ],
+                ),
+                "stopbits": sdk.LinkUserInterfaceField(
+                    description="Number of stop bits",
+                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    default=None,
+                    min_value=None,
+                    max_value=None,
+                    options=["1", "1.5", "2"],
+                ),
+                "databits": sdk.LinkUserInterfaceField(
+                    description="Number of data bits",
+                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    default=5,
+                    min_value=None,
+                    max_value=None,
+                    options=[5, 6, 7, 8],
+                ),
+                "parity": sdk.LinkUserInterfaceField(
+                    description="Parity validation",
+                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    default="none",
+                    min_value=None,
+                    max_value=None,
+                    options=["none", "even", "odd", "mark", "space"],
                 ),
             }
         )
+
         return spec

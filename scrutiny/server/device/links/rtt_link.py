@@ -238,18 +238,18 @@ class RttLink(AbstractLink):
     def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
         spec = sdk.LinkUserInterfaceSpecification(
             fields={
-                "host": sdk.LinkUserInterfaceField(
-                    description="UDP Hostname or IP address",
-                    type=sdk.LinkUserInterfaceFieldTypes.TEXT,
-                    default="localhost",
+                "interface": sdk.LinkUserInterfaceField(
+                    description="Interface",
+                    type=sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR,
+                    default=None,
                     min_value=None,
                     max_value=None,
-                    options=[]
+                    options=['SWD','JTAG','ICSP','FINE','SPI','C2']
                 ),
-                "port": sdk.LinkUserInterfaceField(
+                "target_device": sdk.LinkUserInterfaceField(
                     description="UDP port",
-                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
-                    default=8765,
+                    type=sdk.LinkUserInterfaceFieldTypes.TEXT,
+                    default='',
                     min_value=None,
                     max_value=None,
                     options=[]

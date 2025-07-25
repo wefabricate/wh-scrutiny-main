@@ -131,11 +131,11 @@ class CommHandler:
         self._available_plugin_links = {}
         self._find_plugin_links()
 
-    def _verify_user_interface_specification(self, user_interface_spec: dict, config: LinkConfig) -> bool:
+    def _verify_user_interface_specification(self, user_interface_spec: sdk.LinkUserInterfaceSpecification, config: LinkConfig) -> bool:
         members = list(config.__annotations__.keys())
-        for param in user_interface_spec:
-            if param not in members:
-                self._logger.error(f'User interface element {param} is not defined in the config structure.')
+        for field_name in user_interface_spec.fields:
+            if field_name not in members:
+                self._logger.error(f'User interface element {field_name} is not defined in the config structure.')
                 return False
 
         return True
@@ -150,21 +150,23 @@ class CommHandler:
         for entry_point in plugin_entry_points:
             try:
                 loaded_plugin = entry_point.load()()
-                if issubclass(loaded_plugin[0], AbstractLink) and self._verify_user_interface_specification(loaded_plugin[2]['params'], loaded_plugin[1]):
+                if issubclass(loaded_plugin[0], AbstractLink) and self._verify_user_interface_specification(loaded_plugin[2], loaded_plugin[1]):
                     self._available_plugin_links[entry_point.name] = loaded_plugin
                     self._logger.info(f"Plugin '{entry_point.name}' loaded.")
                 else:
                     self._logger.error(f'Failed to load plugin entry point {entry_point.name} due to a type mismatch.')
-            except Exception:
+            except Exception as e:
                 self._logger.error(f'Failed to import plugin entry point {entry_point.name}')
 
 
     def get_available_link_names(self) -> List[str]:
         return ['udp', 'serial', 'rtt', 'dummy'] + list(self._available_plugin_links.keys())
 
-    @staticmethod
-    def get_available_user_specification() -> dict[str, sdk.LinkUserInterfaceSpecification]:
-        return {'UDP': UdpLink.get_user_interface_specification(),'RTT': RttLink.get_user_interface_specification(),'Dummy': DummyLink.get_user_interface_specification(), 'Serial': SerialLink.get_user_interface_specification()}
+    def get_available_user_specification(self) -> dict[str, sdk.LinkUserInterfaceSpecification]:
+        pluging_user_interfaces = {}
+        for plugin_name in self._available_plugin_links:
+            pluging_user_interfaces[plugin_name] = self._available_plugin_links[plugin_name][2]
+        return pluging_user_interfaces | {'UDP': UdpLink.get_user_interface_specification(),'RTT': RttLink.get_user_interface_specification(),'Dummy': DummyLink.get_user_interface_specification(), 'Serial': SerialLink.get_user_interface_specification()}
 
 
     def _rx_thread_task(self) -> None:
