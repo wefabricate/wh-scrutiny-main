@@ -655,7 +655,6 @@ class ServerStatistics:
     """Number of request/response per seconds exchanged between the server and the device"""
 
 
-@dataclass(frozen=True)
 class LinkUserInterfaceFieldTypes(enum.Enum):
     TEXT = 0
     INTEGER = 1
