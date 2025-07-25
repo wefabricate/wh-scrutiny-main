@@ -29,6 +29,7 @@ from scrutiny.gui import assets
 from scrutiny.sdk import ServerState, DeviceCommState, SFDInfo, DataloggingInfo, DataloggingState, DeviceLinkType, BaseLinkConfig
 from scrutiny import sdk
 from scrutiny.sdk.client import ScrutinyClient
+from scrutiny.server.api.typing import S2C
 
 from scrutiny.tools.typing import *
 
@@ -365,12 +366,25 @@ class StatusBar(QStatusBar):
                 return client.get_available_device_links()
 
 
-            def ui_callback(value , exception: Optional[Exception]) -> None:
+            def ui_callback(value: S2C.GetPossibleLinkConfig , exception: Optional[Exception]) -> None:
                 self._logger.info(f'Callback!: {exception}')
+                rep = {}
+                for link in value:
+                    rep_fields = {}
+                    fields = value[link]['fields']
+                    for field_name in fields:
+                        rep_fields[field_name] = sdk.LinkUserInterfaceField(description=fields[field_name]['description'],
+                                                                            type=sdk.LinkUserInterfaceFieldTypes(fields[field_name]['type']),
+                                                                            default=fields[field_name]['default'], min_value=fields[field_name]['min_value'],
+                                                                            max_value=fields[field_name]['max_value'], options=fields[field_name]['options'])
+
+                    rep[link] = sdk.LinkUserInterfaceSpecification(fields=rep_fields)
+
+                # test = sdk.LinkUserInterfaceSpecification(value)
                 # self._device_config_dialog.set_config(info.device_link.type,
                 #                                       cast(sdk.BaseLinkConfig, info.device_link.config))
                 # self._device_config_dialog.swap_config_pane(info.device_link.type)
-                self._device_config_dialog.set_link_options(value)
+                self._device_config_dialog.set_link_options(rep)
                 self._device_config_dialog.show()
 
             self._server_manager.schedule_client_request(request_available_links, ui_callback)

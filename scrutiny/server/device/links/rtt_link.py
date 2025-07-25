@@ -16,6 +16,9 @@ import threading
 import queue
 
 import pylink   # type: ignore
+
+from scrutiny import sdk
+
 logging.getLogger("pylink").setLevel(logging.WARNING)
 
 from scrutiny.server.device.links.abstract_link import AbstractLink, LinkConfig
@@ -230,3 +233,27 @@ class RttLink(AbstractLink):
 
         if 'jlink_interface' in config:
             RttLink.get_jlink_interface(config['jlink_interface'])       # raise an exception on bad value
+
+    @staticmethod
+    def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
+        spec = sdk.LinkUserInterfaceSpecification(
+            fields={
+                "host": sdk.LinkUserInterfaceField(
+                    description="UDP Hostname or IP address",
+                    type=sdk.LinkUserInterfaceFieldTypes.TEXT,
+                    default="localhost",
+                    min_value=None,
+                    max_value=None,
+                    options=[]
+                ),
+                "port": sdk.LinkUserInterfaceField(
+                    description="UDP port",
+                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
+                    default=8765,
+                    min_value=None,
+                    max_value=None,
+                    options=[]
+                ),
+            }
+        )
+        return spec

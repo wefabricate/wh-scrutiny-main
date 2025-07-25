@@ -10,6 +10,7 @@ __all__ = [
     'DummyLink'
 ]
 
+from scrutiny import sdk
 from .abstract_link import AbstractLink, LinkConfig
 from scrutiny.tools.typing import *
 import queue
@@ -116,3 +117,19 @@ class DummyLink(AbstractLink):
     def validate_config(config: LinkConfig) -> None:
         """Raises an exception if the configuration is not good"""
         pass
+
+    @staticmethod
+    def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
+        spec = sdk.LinkUserInterfaceSpecification(
+            fields={
+                "dummy": sdk.LinkUserInterfaceField(
+                    description="Just a value to pass on",
+                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
+                    default=123,
+                    min_value=0,
+                    max_value=1000,
+                    options=[]
+                )
+            }
+        )
+        return spec

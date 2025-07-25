@@ -22,6 +22,7 @@ from scrutiny.gui.widgets.validable_line_edit import ValidableLineEdit
 from scrutiny.gui.widgets.feedback_label import FeedbackLabel
 from scrutiny.gui.tools.validators import IpPortValidator, NotEmptyValidator
 from scrutiny.gui.core.persistent_data import gui_persistent_data, AppPersistentData
+from scrutiny.sdk import LinkUserInterfaceSpecification
 from scrutiny.tools.typing import *
 
 
@@ -333,40 +334,39 @@ class NoConfigPane(BaseConfigPane):
 
 
 class ConfigForm(BaseConfigPane):
-    def __init__(self, config, parent=None):
+    def __init__(self, config : sdk.LinkUserInterfaceSpecification, parent=None):
         super().__init__(parent)
 
         layout = QFormLayout(self)
         self.fields = {}  # Store widgets by param name
 
-        for param_name, param_info in config.get('params', {}).items():
-            widget = self._create_widget_for_param(param_name, param_info)
+        for field in config.fields:
+            widget = self._create_widget_for_param(field, config.fields[field])
             if widget:
-                layout.addRow(QLabel(param_info.get('description', param_name)), widget)
-                self.fields[param_name] = widget
+                layout.addRow(QLabel(config.fields[field].description), widget)
+                self.fields[field] = widget
 
-    def _create_widget_for_param(self, name, info):
-        param_type = info.get('type')
-        default = info.get('default')
+    def _create_widget_for_param(self, name, info:sdk.LinkUserInterfaceField):
+        param_type = info.type
+        default = info.default
 
-        if param_type == 'string':
+        if param_type == sdk.LinkUserInterfaceFieldTypes.TEXT:
             widget = QLineEdit()
             if default is not None:
                 widget.setText(str(default))
             return widget
 
-        elif param_type == 'int':
+        elif param_type == sdk.LinkUserInterfaceFieldTypes.INTEGER:
             widget = QSpinBox()
-            min_val = info.get('range', {}).get('min', 0)
-            max_val = info.get('range', {}).get('max', 999999)
-            widget.setRange(min_val, max_val)
+            if info.max_value is not None and info.min_value is not None:
+                widget.setRange(info.min_value , info.max_value)
             if default is not None:
-                widget.setValue(default)
+                widget.setValue(int(default))
             return widget
 
-        elif param_type == 'select':
-            values = info.get('values', [])
-            editable = info.get('text-edit', False)
+        elif param_type == sdk.LinkUserInterfaceFieldTypes.EDITABLE_SELECTOR or param_type == sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR:
+            values = info.options
+            editable =  False if param_type == sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR else True
 
             widget = QComboBox()
             widget.setEditable(editable)
@@ -544,16 +544,17 @@ class DeviceConfigDialog(QDialog):
         self._link_type_combo_box.clear()
         self._current_link_options = {}
         self._configs =         {}
-        for option in config:
-            self._current_link_options[option['name']] = option
-            self._configs[option['name']]  = sdk.BaseLinkConfig()
-            self._link_type_combo_box.addItem(option['name'])
-            # self._link_type_combo_box = QComboBox()
-            # self._link_type_combo_box.addItem("None", sdk.DeviceLinkType.NONE)
-            # self._link_type_combo_box.addItem("Serial", sdk.DeviceLinkType.Serial)
-            # self._link_type_combo_box.addItem("UDP/IP", sdk.DeviceLinkType.UDP)
-            # self._link_type_combo_box.addItem("TCP/IP", sdk.DeviceLinkType.TCP)
-            # self._link_type_combo_box.addItem("JLink RTT", sdk.DeviceLinkType.RTT)
+        if config is not None:
+            for option in config:
+                self._current_link_options[option] = config[option]
+                self._configs[option]  = sdk.BaseLinkConfig()
+                self._link_type_combo_box.addItem(option)
+                # self._link_type_combo_box = QComboBox()
+                # self._link_type_combo_box.addItem("None", sdk.DeviceLinkType.NONE)
+                # self._link_type_combo_box.addItem("Serial", sdk.DeviceLinkType.Serial)
+                # self._link_type_combo_box.addItem("UDP/IP", sdk.DeviceLinkType.UDP)
+                # self._link_type_combo_box.addItem("TCP/IP", sdk.DeviceLinkType.TCP)
+                # self._link_type_combo_box.addItem("JLink RTT", sdk.DeviceLinkType.RTT)
 
 
     def _commit_configs_to_preferences(self) -> None:

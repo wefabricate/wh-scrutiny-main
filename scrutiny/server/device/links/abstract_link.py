@@ -12,6 +12,8 @@ __all__ = [
 ]
 
 from abc import ABC, abstractmethod
+
+from scrutiny import sdk
 from scrutiny.tools.typing import *
 
 LinkConfig = Dict[str, Any]
@@ -73,4 +75,10 @@ class AbstractLink(ABC):
     @abstractmethod
     def get_config(self) -> LinkConfig:
         """Get the link configuration"""
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
+        """ Get the user interface specification"""
         pass

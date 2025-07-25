@@ -5,7 +5,6 @@
 #   - Project :  Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-main)
 #
 #   Copyright (c) 2022 Scrutiny Debugger
-
 from scrutiny.core.typehints import EmptyDict
 
 import scrutiny.core.firmware_description
@@ -109,6 +108,16 @@ class DeviceCommLinkDef(TypedDict):
     link_config: LinkConfig
     link_operational: bool
 
+class DeviceLinkUserInterfaceField(TypedDict, total=False):
+    description : str
+    type : int
+    default : str
+    min_value : int
+    max_value : int
+    options : list[str] # can be empty
+
+class DeviceLinkUserInterfaceSpecification(TypedDict):
+    fields: list[DeviceLinkUserInterfaceField]
 
 class GetWatchableList_Filter(TypedDict, total=False):
     type: WatchableType
@@ -328,7 +337,10 @@ class S2C:
     class WatchableUpdate(BaseS2CMessage):
         updates: List[WatchableUpdateRecord]
 
-    GetPossibleLinkConfig = Dict[Any, Any]  # TODO
+    # GetPossibleLinkConfig = Dict[Any, Any]  # TODO
+
+    class GetPossibleLinkConfig(BaseS2CMessage):
+        configs: dict[str, DeviceLinkUserInterfaceSpecification]
 
     class WriteValue(BaseS2CMessage):
         count: int

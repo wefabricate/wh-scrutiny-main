@@ -15,10 +15,10 @@ import logging
 import socket
 import errno
 
+from scrutiny import sdk
 from scrutiny.server.device.links.abstract_link import AbstractLink, LinkConfig
 
 from scrutiny.tools.typing import *
-
 
 class UdpConfig(TypedDict):
     """
@@ -177,3 +177,29 @@ class UdpLink(AbstractLink):
 
         if port <= 0 or port >= 0x10000:
             raise ValueError('Port number must be a valid 16 bits value')
+
+
+    @staticmethod
+    def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
+        spec = sdk.LinkUserInterfaceSpecification(
+            fields={
+                "host": sdk.LinkUserInterfaceField(
+                    description="UDP Hostname or IP address",
+                    type=sdk.LinkUserInterfaceFieldTypes.TEXT,
+                    default="localhost",
+                    min_value=0,
+                    max_value=65535,
+                    options=[]
+                ),
+                "port": sdk.LinkUserInterfaceField(
+                    description="UDP port",
+                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
+                    default=8765,
+                    min_value=0,
+                    max_value=65535,
+                    options=[]
+                ),
+            }
+        )
+        return spec
+

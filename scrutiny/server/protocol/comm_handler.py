@@ -23,13 +23,18 @@ from binascii import hexlify
 from dataclasses import dataclass
 from importlib.metadata import entry_points
 
-from scrutiny import tools
+from scrutiny import tools, sdk
 from scrutiny.server.device.links import AbstractLink, LinkConfig
 from scrutiny.tools.profiling import VariableRateExponentialAverager
 from scrutiny.server.protocol import Request, Response
 from scrutiny.tools import Timer, Throttler
 from scrutiny.core.logging import DUMPDATA_LOGLEVEL
 from scrutiny.tools.typing import *
+
+from scrutiny.server.device.links.udp_link import UdpLink
+from scrutiny.server.device.links.serial_link import SerialLink
+from scrutiny.server.device.links.rtt_link import RttLink
+from scrutiny.server.device.links.dummy_link import DummyLink
 
 
 class CommHandler:
@@ -122,6 +127,7 @@ class CommHandler:
         self._rx_datarate_measurement = VariableRateExponentialAverager(time_estimation_window=0.1, tau=0.5, near_zero=1)
         self._request_per_sec_measurement = VariableRateExponentialAverager(time_estimation_window=0.1, tau=0.5, near_zero=0.1)
 
+        self._default_supported_links = {}
         self._available_plugin_links = {}
         self._find_plugin_links()
 
@@ -155,6 +161,11 @@ class CommHandler:
 
     def get_available_link_names(self) -> List[str]:
         return ['udp', 'serial', 'rtt', 'dummy'] + list(self._available_plugin_links.keys())
+
+    @staticmethod
+    def get_available_user_specification() -> dict[str, sdk.LinkUserInterfaceSpecification]:
+        return {'UDP': UdpLink.get_user_interface_specification(),'RTT': RttLink.get_user_interface_specification(),'Dummy': DummyLink.get_user_interface_specification(), 'Serial': SerialLink.get_user_interface_specification()}
+
 
     def _rx_thread_task(self) -> None:
         self._logger.debug("RX thread started")
@@ -238,16 +249,16 @@ class CommHandler:
         link_class: Type[AbstractLink]
 
         if link_type == 'UDP':
-            from scrutiny.server.device.links.udp_link import UdpLink
+
             link_class = UdpLink
         elif link_type == 'serial':
-            from scrutiny.server.device.links.serial_link import SerialLink
+
             link_class = SerialLink
         elif link_type == 'rtt':
-            from scrutiny.server.device.links.rtt_link import RttLink
+
             link_class = RttLink
         elif link_type == 'dummy':
-            from scrutiny.server.device.links.dummy_link import DummyLink
+
             link_class = DummyLink
         else:
             raise ValueError('Unknown link type %s' % link_type)

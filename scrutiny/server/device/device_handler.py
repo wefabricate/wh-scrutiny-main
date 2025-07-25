@@ -50,7 +50,7 @@ from scrutiny.server.datastore.datastore import Datastore
 from scrutiny.server.device.links import AbstractLink, LinkConfig
 from scrutiny.core.firmware_id import PLACEHOLDER as DEFAULT_FIRMWARE_ID
 from scrutiny.core.basic_types import WatchableType
-from scrutiny import tools
+from scrutiny import tools, sdk
 
 from scrutiny.tools.typing import *
 
@@ -484,6 +484,9 @@ class DeviceHandler:
     def get_link_type(self) -> str:
         """Returns what type of link is used to communicate with the device (serial, UDP, CanBus, etc)"""
         return self.comm_handler.get_link_type()
+
+    def get_link_user_interface_specification(self) -> dict[str, sdk.LinkUserInterfaceSpecification]:
+        return self.comm_handler.get_available_user_specification()
 
     # Set communication state to a fresh start.
     def reset_comm(self) -> None:

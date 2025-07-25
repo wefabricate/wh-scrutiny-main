@@ -15,6 +15,7 @@ __all__ = [
     'InvalidRequestException'
 ]
 
+import json
 import logging
 import traceback
 import math
@@ -28,7 +29,7 @@ import binascii
 import threading
 from datetime import datetime
 
-from scrutiny import tools
+from scrutiny import tools, sdk
 
 from scrutiny.server.timebase import server_timebase
 from scrutiny.server.datalogging.datalogging_storage import DataloggingStorage
@@ -849,134 +850,30 @@ class API:
 
         self.send_server_status_to_all_clients()
 
-#here!
+#here!!
     #  todo
     def process_get_possible_link_config(self, conn_id: str, req: api_typing.C2S.GetPossibleLinkConfig) -> None:
-        configs = []
+        available_configs = self.device_handler.get_link_user_interface_specification()
+        api_compatible_config = {}
 
-        udp_config = {
-            'name': 'UDP',
-            'params': {
-                'host': {
-                    'description': 'UDP Hostname or IP address',
-                    'default': 'localhost',
-                    'type': 'string'
-                },
-                'port': {
-                    'description': 'UDP port',
-                    'default': 8765,
-                    'type': 'int',
-                    'range': {'min': 0, 'max': 65535}
-                }
-            }
-        }
+        for available_config_name in available_configs:
+            available_config = available_configs[available_config_name]
+            api_compatible_fields = {}
+            for field_name in available_config.fields:
+                field = available_config.fields[field_name]
+                api_compatible_fields[field_name] = api_typing.DeviceLinkUserInterfaceField(description=field.description, type=field.type.value, default=field.default, options=field.options, min_value=field.min_value, max_value=field.max_value)
+            api_compatible_config[available_config_name] = api_typing.DeviceLinkUserInterfaceSpecification(fields=api_compatible_fields)
 
-        configs.append(udp_config)
 
-        tcp_config = {
-            'name': 'TCP',
-            'params': {
-                'host': {
-                    'description': 'TCP Hostname or IP address',
-                    'default': 'localhost',
-                    'type': 'string'
-                },
-                'port': {
-                    'description': 'TCP port',
-                    'default': 8765,
-                    'type': 'int',
-                    'range': {'min': 0, 'max': 65535}
-                }
-            }
-        }
+            # api_compatible_config[available_config_name] =
 
-        configs.append(tcp_config)
-
-        rtt_config = {
-            'name': 'RTT',
-            'params': {
-                'interface':{
-                    'description': 'Interface',
-                    'type': 'select',
-                    'text-edit': False,
-                    'values': [
-                        'SWD',
-                        'JTAG',
-                        'ICSP',
-                        'FINE',
-                        'SPI',
-                        'C2'
-                    ]
-                },
-                'target_device':{
-                    'description': 'Target device',
-                    'type': 'string'
-                }
-            }
-        }
-        configs.append(rtt_config)
-
-        try:
-            import serial.tools.list_ports  # type: ignore
-            ports = serial.tools.list_ports.comports()
-            portname_list: List[str] = [] if ports is None else [port.device for port in ports]
-
-            serial_config = {
-                'name': 'serial',
-                'params': {
-                    'portname': {
-                        'description': 'Serial port name',
-                        'type': 'select',
-                        'text-edit': True,
-                        'values': portname_list
-                    },
-                    'baudrate': {
-                        'description': 'Speed transmission in Baud/s (bit/s)',
-                        'default': 115200,
-                        'type': 'select',
-                        'text-edit': True,
-                        'values': [
-                            1200,
-                            2400,
-                            4800,
-                            9600,
-                            14400,
-                            19200,
-                            28800,
-                            38400,
-                            57600,
-                            115200,
-                            230400
-                        ]
-                    },
-                    'stopbits': {
-                        'description': 'Number of stop bits',
-                        'type': 'select',
-                        'values': ['1', '1.5', '2']
-                    },
-                    'databits': {
-                        'description': 'Number of data bits',
-                        'default': 5,
-                        'type': 'select',
-                        'values': [5, 6, 7, 8]
-                    },
-                    'parity': {
-                        'description': 'Parity validation',
-                        'default': 'none',
-                        'type': 'select',
-                        'values': ['none', 'even', 'odd', 'mark', 'space']
-                    }
-                }
-            }
-
-            configs.append(serial_config)
-        except Exception as e:
-            self.logger.debug('Serial communication not possible.\n' + traceback.format_exc())
+        # new_config = {}
+        # new_config['dummy'] = api_typing.DeviceLinkUserInterfaceSpecification(fields=[api_typing.DeviceLinkUserInterfaceField(description='test description', type=0, default='empty')])
 
         response: api_typing.S2C.GetPossibleLinkConfig = {
             'cmd': self.Command.Api2Client.GET_POSSIBLE_LINK_CONFIG_RESPONSE,
             'reqid': self.get_req_id(req),
-            'configs': configs
+            'configs': api_compatible_config
         }
 
         self.client_handler.send(ClientHandlerMessage(conn_id=conn_id, obj=response))

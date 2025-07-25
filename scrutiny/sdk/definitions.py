@@ -39,10 +39,14 @@ __all__ = [
     'VariableFreqSamplingRate',
     'DataloggingCapabilities',
     'ServerStatistics',
-    'EmbeddedEnum'
+    'EmbeddedEnum',
+    'LinkUserInterfaceFieldTypes',
+    'LinkUserInterfaceField',
+    'LinkUserInterfaceSpecification'
 ]
 
 import enum
+import json
 from dataclasses import dataclass
 from scrutiny.core.basic_types import MemoryRegion, EmbeddedDataType, WatchableType
 from scrutiny.core.embedded_enum import EmbeddedEnum
@@ -649,3 +653,26 @@ class ServerStatistics:
 
     device_request_per_sec: float
     """Number of request/response per seconds exchanged between the server and the device"""
+
+
+@dataclass(frozen=True)
+class LinkUserInterfaceFieldTypes(enum.Enum):
+    TEXT = 0
+    INTEGER = 1
+    SELECTOR = 2
+    EDITABLE_SELECTOR = 3
+    FIXED_SELECTOR = 4
+
+@dataclass(frozen=True)
+class LinkUserInterfaceField:
+    description: str
+    type: LinkUserInterfaceFieldTypes
+    default: Optional[str]
+    min_value: Optional[int]
+    max_value: Optional[int]
+    options: Optional[[str]]
+
+
+@dataclass(frozen=True)
+class LinkUserInterfaceSpecification:
+    fields : dict[str, LinkUserInterfaceField]
