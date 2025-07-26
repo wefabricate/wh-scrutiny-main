@@ -251,17 +251,15 @@ class CommHandler:
         link_class: Type[AbstractLink]
 
         if link_type == 'UDP':
-
             link_class = UdpLink
         elif link_type == 'serial':
-
             link_class = SerialLink
         elif link_type == 'rtt':
-
             link_class = RttLink
         elif link_type == 'dummy':
-
             link_class = DummyLink
+        elif link_type in self._available_plugin_links:
+            link_class = self._available_plugin_links[link_type][0]
         else:
             raise ValueError('Unknown link type %s' % link_type)
 
