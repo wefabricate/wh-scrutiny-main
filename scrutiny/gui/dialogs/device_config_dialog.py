@@ -14,7 +14,7 @@ import traceback
 
 from PySide6.QtWidgets import QDialog, QWidget, QComboBox, QVBoxLayout, QDialogButtonBox, QFormLayout, QLabel, \
     QPushButton, QLineEdit, QSpinBox
-from PySide6.QtGui import QIntValidator, QDoubleValidator
+from PySide6.QtGui import QIntValidator, QDoubleValidator, QFontMetrics
 from PySide6.QtCore import Qt
 
 from scrutiny import sdk
@@ -346,6 +346,12 @@ class ConfigForm(BaseConfigPane):
                 layout.addRow(QLabel(config.fields[field].description), widget)
                 self.fields[field] = widget
 
+    @staticmethod
+    def set_combo_box_width_to_longest_item(combo: QComboBox):
+        fm = QFontMetrics(combo.font())
+        max_text_width = max(fm.horizontalAdvance(combo.itemText(i)) for i in range(combo.count()))
+        combo.setMinimumWidth(max_text_width + 30)  # Add padding for arrow etc.
+
     def _create_widget_for_param(self, name, info:sdk.LinkUserInterfaceField):
         param_type = info.type
         default = info.default
@@ -371,6 +377,9 @@ class ConfigForm(BaseConfigPane):
             widget = QComboBox()
             widget.setEditable(editable)
             widget.addItems([str(v) for v in values])
+            self.set_combo_box_width_to_longest_item(widget)
+            # widget.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+            # widget.setMinimumContentsLength(1)
 
             if default is not None:
                 default_str = str(default)

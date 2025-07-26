@@ -264,7 +264,7 @@ class SerialLink(AbstractLink):
                 ),
                 "stopbits": sdk.LinkUserInterfaceField(
                     description="Number of stop bits",
-                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    type=sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR,
                     default=None,
                     min_value=None,
                     max_value=None,
@@ -272,7 +272,7 @@ class SerialLink(AbstractLink):
                 ),
                 "databits": sdk.LinkUserInterfaceField(
                     description="Number of data bits",
-                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    type=sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR,
                     default=5,
                     min_value=None,
                     max_value=None,
@@ -280,11 +280,19 @@ class SerialLink(AbstractLink):
                 ),
                 "parity": sdk.LinkUserInterfaceField(
                     description="Parity validation",
-                    type=sdk.LinkUserInterfaceFieldTypes.SELECTOR,
+                    type=sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR,
                     default="none",
                     min_value=None,
                     max_value=None,
                     options=["none", "even", "odd", "mark", "space"],
+                ),
+                "start_delay": sdk.LinkUserInterfaceField(
+                    description="Start delay (s)",
+                    type=sdk.LinkUserInterfaceFieldTypes.INTEGER,
+                    default=0,
+                    min_value=None,
+                    max_value=None,
+                    options=[],
                 ),
             }
         )
