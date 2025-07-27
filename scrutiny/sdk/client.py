@@ -2111,6 +2111,37 @@ class ScrutinyClient:
             raise sdk.exceptions.OperationFailure(
                 f"Failed to configure the device communication link. {future.error_str}")
 
+    def link_oem_comment(self, content: Optional[dict]) -> Optional[dict]:
+        """ Send a comment to a link.
+        The application has no knowledge of the content and only requires it to be serializable.
+        It is intended to be used with plugin links where the link can have alternate functions next to scrutiny.
+
+        :param content: A dictionary that is passed to the link
+
+        #todo: what exceptions can this raise?
+
+        :return: A dictionary that from the link
+
+        """
+        req = self._make_request(API.Command.Client2Api.LINK_OEM_COMMAND, {'content': content})
+
+        @dataclass
+        class Container:
+            obj: Optional[dict]
+        cb_data: Container = Container(obj=None)  # Force pass by ref
+
+        def callback(state: CallbackState, response: Optional[api_typing.S2CMessage]) -> None:
+            if response is not None and state == CallbackState.OK:
+                cb_data.obj = cast(api_typing.S2C.LinkOemReply, response)
+        future = self._send(req, callback)
+        assert future is not None
+        future.wait()
+
+        if future.state != CallbackState.OK:
+            raise sdk.exceptions.OperationFailure(f"Failed to execute the OEM link command. {future.error_str}")
+
+        return cb_data.obj
+
     def user_command(self, subfunction: int, data: bytes = bytes()) -> sdk.UserCommandResponse:
         """
         Sends a UserCommand request to the device with the given subfunction and data. UserCommand is a request that calls a user defined callback

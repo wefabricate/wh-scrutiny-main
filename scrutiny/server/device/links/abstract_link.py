@@ -82,3 +82,7 @@ class AbstractLink(ABC):
     def get_user_interface_specification() -> sdk.LinkUserInterfaceSpecification:
         """ Get the user interface specification"""
         pass
+
+    def oem_link_comment(self, content: dict) -> Optional[dict]:
+        """ Process a OEM link command. """
+        raise NotImplementedError()

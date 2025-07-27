@@ -523,3 +523,11 @@ class CommHandler:
             tx_datarate_byte_per_sec=self._tx_datarate_measurement.get_value(),
             request_per_sec=self._request_per_sec_measurement.get_value()
         )
+
+    def send_oem_link_command(self, content: dict) -> Optional[dict]:
+        try:
+            return self._link.oem_link_comment(content)
+        except NotImplementedError:
+            self._logger.info("Oem link command not implemented.")
+        except Exception:
+            self._logger.debug("Oem link command failed.")

@@ -286,6 +286,9 @@ class C2S:
 
     GetPossibleLinkConfig = Dict[Any, Any]  # Todo
 
+    class LinkOemRequest(BaseC2SMessage):
+        content: dict
+
 
 class S2C:
     "Server To Client"
@@ -422,6 +425,9 @@ class S2C:
         to_device_datarate_byte_per_sec: float
         from_device_datarate_byte_per_sec: float
         device_request_per_sec: float
+
+    class LinkOemReply(BaseS2CMessage):
+        content: dict
 
 
 C2SMessage = Union[

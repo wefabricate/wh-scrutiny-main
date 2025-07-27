@@ -9,6 +9,7 @@
 __all__ = ['MainWindow']
 
 import logging
+from importlib.metadata import entry_points
 from pathlib import Path
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow):
 
         self._logger = logging.getLogger(self.__class__.__name__)
 
+        self.all_local_components = self.ENABLED_LOCAL_COMPONENTS + self._find_plugin_component()
+
         self.setWindowTitle('Scrutiny Debugger')
         self.setGeometry(self.centered(self.INITIAL_W, self.INITIAL_H))
         self.setWindowState(Qt.WindowState.WindowMaximized)
@@ -116,6 +119,27 @@ class MainWindow(QMainWindow):
         if app_settings().auto_connect:
             invoke_later(self.start_server_manager)
 
+    def _find_plugin_component(self) -> list[Type[ScrutinyGUIBaseLocalComponent]]:
+        plugin_classes = []
+        plugin_entry_points = entry_points(group='scrutinydebugger.gui.components')
+        if len(plugin_entry_points) == 0:
+            self._logger.info("No plugins that provide gui components were found.")
+            return []
+
+        for entry_point in plugin_entry_points:
+            try:
+                loaded_plugin = entry_point.load()()
+                if issubclass(loaded_plugin, ScrutinyGUIBaseLocalComponent):
+                    plugin_classes.append(loaded_plugin)
+                    self._logger.info(f"Plugin '{entry_point.name}' loaded.")
+                else:
+                    self._logger.error(f'Failed to load plugin entry point {entry_point.name} due to a type mismatch.')
+            except Exception as e:
+                self._logger.error(f'Failed to import plugin entry point {entry_point.name}')
+
+        return plugin_classes
+
+
     def centered(self, w: int, h: int) -> QRect:
         """Returns a rectangle centered in the screen of given width/height"""
         screen = self.screen()
@@ -141,7 +165,7 @@ class MainWindow(QMainWindow):
 
         self._component_sidebar = ComponentSidebar(
             global_components=self.ENABLED_GLOBALS_COMPONENTS,
-            local_components=self.ENABLED_LOCAL_COMPONENTS
+            local_components=self.all_local_components
         )
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self._component_sidebar)
 

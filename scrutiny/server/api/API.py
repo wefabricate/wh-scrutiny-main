@@ -107,6 +107,7 @@ class API:
             USER_COMMAND = "user_command"
             GET_SERVER_STATS = 'get_server_stats'
             DEBUG = 'debug'
+            LINK_OEM_COMMAND = 'link_oem_command'
 
         class Api2Client:
             ECHO_RESPONSE = 'response_echo'
@@ -139,6 +140,7 @@ class API:
             USER_COMMAND_RESPONSE = "response_user_command"
             GET_SERVER_STATS = 'response_get_server_stats'
             ERROR_RESPONSE = 'error'
+            LINK_OEM_RESPONSE = 'link_oem_response'
 
     @dataclass(frozen=True)
     class Statistics:
@@ -323,7 +325,8 @@ class API:
             self.Command.Client2Api.READ_MEMORY: self.process_read_memory,
             self.Command.Client2Api.WRITE_MEMORY: self.process_write_memory,
             self.Command.Client2Api.USER_COMMAND: self.process_user_command,
-            self.Command.Client2Api.GET_SERVER_STATS: self.process_server_stats
+            self.Command.Client2Api.GET_SERVER_STATS: self.process_server_stats,
+            self.Command.Client2Api.LINK_OEM_COMMAND: self.process_link_oem_command
         }
 
         if enable_debug:
@@ -1649,6 +1652,20 @@ class API:
             'to_device_datarate_byte_per_sec': stats.device.comm_handler.tx_datarate_byte_per_sec,
             'from_device_datarate_byte_per_sec': stats.device.comm_handler.rx_datarate_byte_per_sec,
             'device_request_per_sec': stats.device.comm_handler.request_per_sec,
+        }
+
+        self.client_handler.send(ClientHandlerMessage(conn_id=conn_id, obj=response))
+
+    def process_link_oem_command(self, conn_id: str, req: api_typing.C2S.LinkOemRequest) -> None:
+
+        # api_typing.S2C.LinkOemReply
+        #get from link
+        reply = self.device_handler.comm_handler.send_oem_link_command(req.get('content', {}))
+
+        response: api_typing.S2C.LinkOemReply = {
+            'cmd': self.Command.Api2Client.LINK_OEM_RESPONSE,
+            'reqid': self.get_req_id(req),
+            'content': reply
         }
 
         self.client_handler.send(ClientHandlerMessage(conn_id=conn_id, obj=response))
