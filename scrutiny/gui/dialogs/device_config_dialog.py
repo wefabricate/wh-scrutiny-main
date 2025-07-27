@@ -36,6 +36,9 @@ class BaseConfigPane(QWidget):
     def visual_validation(self) -> None:
         pass
 
+    def commit_preferences(self) -> None:
+        pass
+
     @classmethod
     def make_config_valid(self, config: Optional[sdk.BaseLinkConfig]) -> sdk.BaseLinkConfig:
         assert config is not None
@@ -334,10 +337,15 @@ class NoConfigPane(BaseConfigPane):
 
 
 class ConfigForm(BaseConfigPane):
-    def __init__(self, config : sdk.LinkUserInterfaceSpecification, parent=None):
+    _preferences: AppPersistentData
+
+    def __init__(self, name: str, config : sdk.LinkUserInterfaceSpecification, parent=None):
         super().__init__(parent)
 
         layout = QFormLayout(self)
+
+        self._preferences = gui_persistent_data.get_namespace(self.__class__.__name__ + '.' + name)
+
         self.fields = {}  # Store widgets by param name
 
         for field in config.fields:
@@ -352,22 +360,40 @@ class ConfigForm(BaseConfigPane):
         max_text_width = max(fm.horizontalAdvance(combo.itemText(i)) for i in range(combo.count()))
         combo.setMinimumWidth(max_text_width + 30)  # Add padding for arrow etc.
 
+    def commit_preferences(self) -> None:
+        all_preference_keys = list[self.fields.keys()]
+
+        self._preferences.prune(all_preference_keys)    # Remove extra keys
+
+        for field_name in self.fields:
+            widget = self.fields[field_name]
+            if type(widget) is QLineEdit:
+                self._preferences.set(field_name, widget.text())
+            elif type(widget) is QSpinBox:
+                self._preferences.set(field_name, widget.value())
+            elif type(widget) is QComboBox:
+                self._preferences.set(field_name, widget.currentText())
+            else:
+                pass
+
+
+
+
     def _create_widget_for_param(self, name, info:sdk.LinkUserInterfaceField):
         param_type = info.type
         default = info.default
 
         if param_type == sdk.LinkUserInterfaceFieldTypes.TEXT:
             widget = QLineEdit()
-            if default is not None:
-                widget.setText(str(default))
+            widget.setText(self._preferences.get_str(name, default))
             return widget
 
         elif param_type == sdk.LinkUserInterfaceFieldTypes.INTEGER:
             widget = QSpinBox()
             if info.max_value is not None and info.min_value is not None:
                 widget.setRange(info.min_value , info.max_value)
-            if default is not None:
-                widget.setValue(int(default))
+            widget.setValue(self._preferences.get_int(name, int(default)))
+            # widget.setMinimumWidth(80)
             return widget
 
         elif param_type == sdk.LinkUserInterfaceFieldTypes.EDITABLE_SELECTOR or param_type == sdk.LinkUserInterfaceFieldTypes.FIXED_SELECTOR:
@@ -378,15 +404,7 @@ class ConfigForm(BaseConfigPane):
             widget.setEditable(editable)
             widget.addItems([str(v) for v in values])
             self.set_combo_box_width_to_longest_item(widget)
-            # widget.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-            # widget.setMinimumContentsLength(1)
-
-            if default is not None:
-                default_str = str(default)
-                if default_str not in [widget.itemText(i) for i in range(widget.count())]:
-                    widget.addItem(default_str)
-                widget.setCurrentText(default_str)
-
+            widget.setCurrentText(str(self._preferences.get(name, default)))
             return widget
 
         return None
@@ -421,37 +439,12 @@ class ConfigForm(BaseConfigPane):
                     widget.addItem(str_value)
                 widget.setCurrentText(str_value)
 
+    def visual_validation(self) -> None:
+        # todo: fix visual validation
+        pass
+
 class DeviceConfigDialog(QDialog):
 
-    # todo how to store persistant stuff while it is all dynamic?
-    class PersistentPreferences:
-        UDP_HOST = 'udp_hostname'
-        UDP_PORT = 'udp_port'
-
-        TCP_HOST = 'tcp_hostname'
-        TCP_PORT = 'tcp_port'
-
-        SERIAL_PORT = 'serial_port'
-        SERIAL_BAUDRATE = 'serial_baudrate'
-        SERIAL_START_DELAY = 'serial_start_delay'
-        SERIAL_STOPBIT = 'serial_stopbit'
-        SERIAL_PARITY = 'serial_parity'
-        SERIAL_DATABITS = 'serial_databits'
-
-        RTT_TARGET_DEVICE = 'rtt_target_device'
-        RTT_JLINK_INTERFACE = 'rtt_jlink_interface'
-
-        @classmethod
-        def get_all(cls) -> List[str]:
-            return [attr for attr in dir(cls) if not callable(getattr(cls, attr)) and not attr.startswith("__")]
-
-    # CONFIG_TYPE_TO_WIDGET: Dict[sdk.DeviceLinkType, Type[BaseConfigPane]] = {
-    #     sdk.DeviceLinkType.NONE: NoConfigPane,
-    #     sdk.DeviceLinkType.TCP: TCPConfigPane,
-    #     sdk.DeviceLinkType.UDP: UDPConfigPane,
-    #     sdk.DeviceLinkType.Serial: SerialConfigPane,
-    #     sdk.DeviceLinkType.RTT: RTTConfigPane
-    # }
 
     _link_type_combo_box: QComboBox
     _config_container: QWidget
@@ -461,7 +454,6 @@ class DeviceConfigDialog(QDialog):
     _feedback_label: FeedbackLabel
     _btn_ok: QPushButton
     _btn_cancel: QPushButton
-    _preferences: AppPersistentData
 
     def __init__(self,
                  parent: Optional[QWidget] = None,
@@ -469,18 +461,13 @@ class DeviceConfigDialog(QDialog):
                  ) -> None:
         super().__init__(parent)
         self.setModal(True)
-        self._preferences = gui_persistent_data.get_namespace(self.__class__.__name__)
         self._apply_callback = apply_callback
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.setMinimumWidth(250)
+        self.setMinimumWidth(300)
         vlayout = QVBoxLayout(self)
+
         # Combobox at the top
         self._link_type_combo_box = QComboBox()
-        # self._link_type_combo_box.addItem("None", sdk.DeviceLinkType.NONE)
-        # self._link_type_combo_box.addItem("Serial", sdk.DeviceLinkType.Serial)
-        # self._link_type_combo_box.addItem("UDP/IP", sdk.DeviceLinkType.UDP)
-        # self._link_type_combo_box.addItem("TCP/IP", sdk.DeviceLinkType.TCP)
-        # self._link_type_combo_box.addItem("JLink RTT", sdk.DeviceLinkType.RTT)
 
         # Bottom part that changes based on combo box selection
         self._config_container = QWidget()
@@ -502,50 +489,10 @@ class DeviceConfigDialog(QDialog):
 
         self._configs = {}
         # Preload some default configs to avoid having a blank form
-        self._no_config= sdk.NoneLinkConfig()
-        # self._configs[sdk.DeviceLinkType.UDP] = sdk.UDPLinkConfig(
-        #     host=self._preferences.get_str(self.PersistentPreferences.UDP_HOST, 'localhost'),
-        #     port=self._preferences.get_int(self.PersistentPreferences.UDP_PORT, 12345),
-        # )
-        #
-        # self._configs[sdk.DeviceLinkType.TCP] = sdk.TCPLinkConfig(
-        #     host=self._preferences.get_str(self.PersistentPreferences.TCP_HOST, 'localhost'),
-        #     port=self._preferences.get_int(self.PersistentPreferences.TCP_PORT, 12345),
-        # )
-        #
-        # self._configs[sdk.DeviceLinkType.Serial] = sdk.SerialLinkConfig(
-        #     port=self._preferences.get_str(self.PersistentPreferences.SERIAL_PORT, '<port>'),
-        #     baudrate=self._preferences.get_int(self.PersistentPreferences.SERIAL_BAUDRATE, 115200),
-        #     start_delay=self._preferences.get_float(self.PersistentPreferences.SERIAL_START_DELAY, 0),
-        #     parity=sdk.SerialLinkConfig.Parity.from_str(
-        #         self._preferences.get_str(self.PersistentPreferences.SERIAL_PARITY, sdk.SerialLinkConfig.Parity.NONE.to_str()),
-        #         sdk.SerialLinkConfig.Parity.NONE    # preference file could be corrupted
-        #     ),
-        #     stopbits=sdk.SerialLinkConfig.StopBits.from_float(
-        #         self._preferences.get_float(self.PersistentPreferences.SERIAL_STOPBIT, sdk.SerialLinkConfig.StopBits.ONE.to_float()),
-        #         default=sdk.SerialLinkConfig.StopBits.ONE   # preference file could be corrupted
-        #     ),
-        #     databits=sdk.SerialLinkConfig.DataBits.from_int(
-        #         self._preferences.get_int(self.PersistentPreferences.SERIAL_DATABITS, sdk.SerialLinkConfig.DataBits.EIGHT.to_int()),
-        #         default=sdk.SerialLinkConfig.DataBits.EIGHT   # preference file could be corrupted
-        #     )
-        # )
-        #
-        # self._configs[sdk.DeviceLinkType.RTT] = sdk.RTTLinkConfig(
-        #     target_device=self._preferences.get_str(self.PersistentPreferences.RTT_TARGET_DEVICE, '<device>'),
-        #     jlink_interface=sdk.RTTLinkConfig.JLinkInterface.from_str(
-        #         self._preferences.get_str(self.PersistentPreferences.RTT_JLINK_INTERFACE, sdk.RTTLinkConfig.JLinkInterface.SWD.to_str()),
-        #         sdk.RTTLinkConfig.JLinkInterface.SWD
-        #     )
-        # )
+
 
         self._link_type_combo_box.currentIndexChanged.connect(self._combobox_changed)
         self._active_pane = NoConfigPane()
-        #todo
-        # self.swap_config_pane(sdk.DeviceLinkType.NONE)
-
-        self._preferences.prune(self.PersistentPreferences.get_all())    # Remove extra keys
-        self._commit_configs_to_preferences()   # Override any corrupted values
 
         self._current_link_options = []
 
@@ -558,36 +505,6 @@ class DeviceConfigDialog(QDialog):
                 self._current_link_options[option] = config[option]
                 self._configs[option]  = sdk.BaseLinkConfig()
                 self._link_type_combo_box.addItem(option)
-                # self._link_type_combo_box = QComboBox()
-                # self._link_type_combo_box.addItem("None", sdk.DeviceLinkType.NONE)
-                # self._link_type_combo_box.addItem("Serial", sdk.DeviceLinkType.Serial)
-                # self._link_type_combo_box.addItem("UDP/IP", sdk.DeviceLinkType.UDP)
-                # self._link_type_combo_box.addItem("TCP/IP", sdk.DeviceLinkType.TCP)
-                # self._link_type_combo_box.addItem("JLink RTT", sdk.DeviceLinkType.RTT)
-
-
-    def _commit_configs_to_preferences(self) -> None:
-        """Put the actual state of the dialog inside the persistent preferences system
-        so that they get reloaded on next app startup"""
-        # udp_config = cast(sdk.UDPLinkConfig, self._configs[sdk.DeviceLinkType.UDP])
-        # self._preferences.set_str(self.PersistentPreferences.UDP_HOST, udp_config.host)
-        # self._preferences.set_int(self.PersistentPreferences.UDP_PORT, udp_config.port)
-        #
-        # tcp_config = cast(sdk.TCPLinkConfig, self._configs[sdk.DeviceLinkType.TCP])
-        # self._preferences.set_str(self.PersistentPreferences.TCP_HOST, tcp_config.host)
-        # self._preferences.set_int(self.PersistentPreferences.TCP_PORT, tcp_config.port)
-        #
-        # serial_config = cast(sdk.SerialLinkConfig, self._configs[sdk.DeviceLinkType.Serial])
-        # self._preferences.set_str(self.PersistentPreferences.SERIAL_PORT, serial_config.port)
-        # self._preferences.set_int(self.PersistentPreferences.SERIAL_BAUDRATE, serial_config.baudrate)
-        # self._preferences.set_float(self.PersistentPreferences.SERIAL_START_DELAY, serial_config.start_delay)
-        # self._preferences.set_str(self.PersistentPreferences.SERIAL_PARITY, serial_config.parity.to_str())
-        # self._preferences.set_int(self.PersistentPreferences.SERIAL_DATABITS, serial_config.databits.to_int())
-        # self._preferences.set_float(self.PersistentPreferences.SERIAL_STOPBIT, serial_config.stopbits.to_float())
-        #
-        # rtt_config = cast(sdk.RTTLinkConfig, self._configs[sdk.DeviceLinkType.RTT])
-        # self._preferences.set_str(self.PersistentPreferences.RTT_TARGET_DEVICE, rtt_config.target_device)
-        # self._preferences.set_str(self.PersistentPreferences.RTT_JLINK_INTERFACE, rtt_config.jlink_interface.to_str())
 
     def _get_selected_link_type(self) -> sdk.DeviceLinkType:
         return self._link_type_combo_box.currentText()
@@ -606,24 +523,12 @@ class DeviceConfigDialog(QDialog):
 
         if link_type in self._configs:
             # get index by name
-            self._active_pane = ConfigForm(self._current_link_options[link_type])
+            self._active_pane = ConfigForm(link_type, self._current_link_options[link_type])
             layout = self._config_container.layout()
             layout.addWidget(self._active_pane)
 
             self.window().adjustSize()
-
-        # Create an instance of the pane associated with the link type
-        # self._active_pane = self.CONFIG_TYPE_TO_WIDGET[link_type]()
-        # layout = self._config_container.layout()
-        # assert layout is not None
-        # layout.addWidget(self._active_pane)
-        #
-        # try:
-        #     config = self._active_pane.make_config_valid(self._configs[link_type])
-        #     self._active_pane.load_config(config)
-        # except Exception as e:
-        #     self.logger.warning(f"Tried to apply an invalid config to the window. {e}")
-        #     self.logger.debug(traceback.format_exc())
+            self.adjustSize()
 
     def _btn_ok_click(self) -> None:
         link_type = self._get_selected_link_type()
@@ -634,7 +539,7 @@ class DeviceConfigDialog(QDialog):
             self._configs[link_type] = config
             self._btn_ok.setEnabled(False)
             self._set_waiting_status()
-            self._commit_configs_to_preferences()
+            self._active_pane.commit_preferences()
             if self._apply_callback is not None:
                 self._apply_callback(self)
 
@@ -671,7 +576,7 @@ class DeviceConfigDialog(QDialog):
         if link_type not in self._configs:
             raise ValueError("Unsupported config type")
 
-        valid_config = ConfigForm(self._current_link_options[link_type]).make_config_valid(config)
+        valid_config = ConfigForm(link_type, self._current_link_options[link_type]).make_config_valid(config)
         self._configs[link_type] = valid_config
 
     def get_type_and_config(self) -> Tuple[sdk.DeviceLinkType, Optional[sdk.BaseLinkConfig]]:
