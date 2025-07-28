@@ -160,7 +160,7 @@ class CommHandler:
 
 
     def get_available_link_names(self) -> List[str]:
-        return ['udp', 'serial', 'rtt', 'dummy'] + list(self._available_plugin_links.keys())
+        return ['UDP', 'Serial', 'RTT', 'Dummy'] + list(self._available_plugin_links.keys())
 
     def get_available_user_specification(self) -> dict[str, sdk.LinkUserInterfaceSpecification]:
         pluging_user_interfaces = {}
@@ -252,11 +252,11 @@ class CommHandler:
 
         if link_type == 'UDP':
             link_class = UdpLink
-        elif link_type == 'serial':
+        elif link_type == 'Serial':
             link_class = SerialLink
-        elif link_type == 'rtt':
+        elif link_type == 'Rtt':
             link_class = RttLink
-        elif link_type == 'dummy':
+        elif link_type == 'Dummy':
             link_class = DummyLink
         elif link_type in self._available_plugin_links:
             link_class = self._available_plugin_links[link_type][0]
