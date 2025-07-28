@@ -177,6 +177,11 @@ class DatastoreEntry(abc.ABC):
         """Decode a stream of bytes into a Python value"""
         raise NotImplementedError("Abstract method")
 
+    @abc.abstractmethod
+    def has_resolvable_address(self) -> bool:
+        """Returns True if the entry has a resolvable address."""
+        raise NotImplementedError("Abstract method")
+
     def get_id(self) -> str:
         """Returns the datastore entry ID"""
         return self.entry_id
@@ -243,12 +248,14 @@ class DatastoreVariableEntry(DatastoreEntry):
     that contains an address, a type, an endianness, optional bitfield, etc.
     """
     variable_def: Variable
+    pointer_variable: Optional['DatastoreVariableEntry']
     codec: BaseCodec    # The codec used to converts bytes to values and vice versa
 
     def __init__(self, display_path: str, variable_def: Variable):
         super().__init__(display_path=display_path)
         self.variable_def = variable_def
         self.codec = Codecs.get(self.variable_def.get_type(), self.variable_def.endianness)
+        self.pointer_variable = None
 
     def get_type(self) -> WatchableType:
         """Returns the device data type"""
@@ -262,9 +269,14 @@ class DatastoreVariableEntry(DatastoreEntry):
         """Return the referenced variable definition"""
         return self.variable_def
 
-    def get_address(self) -> int:
+    def get_address(self) -> Optional[int]:
         """Return the referenced variable address"""
-        return self.variable_def.get_address()
+        if self.variable_def.get_address() is not None:
+            return self.variable_def.get_address()
+        elif self.pointer_variable.get_value() != 0:
+            return self.pointer_variable.get_value() + self.variable_def.get_offset()
+        return None
+
 
     def get_size(self) -> int:
         """Return the variable data size"""
@@ -300,6 +312,21 @@ class DatastoreVariableEntry(DatastoreEntry):
     def decode(self, data: bytes) -> Encodable:
         """Decode a stream of bytes into a Python value"""
         return self.variable_def.decode(data)
+
+    def has_resolvable_address(self) -> bool:
+        if self.variable_def.get_address() is not None:
+            return True
+        if self.pointer_variable is not None:
+            if self.pointer_variable.get_value() != 0:
+                return True
+        return False
+
+
+    def get_base_path(self) -> str:
+        return self.variable_def.base
+
+    def set_pointer_variable(self, pointer: 'DatastoreVariableEntry') -> None:
+        self.pointer_variable = pointer
 
 
 class DatastoreAliasEntry(DatastoreEntry):
@@ -357,6 +384,11 @@ class DatastoreAliasEntry(DatastoreEntry):
     def decode(self, data: bytes) -> Encodable:
         """Decode a stream of bytes into a Python value"""
         return self.aliasdef.compute_device_to_user(self.refentry.decode(data))
+
+    def has_resolvable_address(self) -> bool:
+        """Returns True if the entry has a resolvable address."""
+        #todo
+        return True
 
     def alias_target_update_callback(self, alias_request: UpdateTargetRequest, success: bool, entry: DatastoreEntry, timestamp: float) -> None:
         """Callback used by an alias to grab the result of the target update and apply it to its own"""
@@ -428,6 +460,11 @@ class DatastoreRPVEntry(DatastoreEntry):
     def decode(self, data: bytes) -> Encodable:
         """Decode a stream of bytes into a Python value"""
         return self.codec.decode(data)
+    
+    def has_resolvable_address(self) -> bool:
+        """Returns True if the entry has a resolvable address."""
+        # todo
+        return True
 
     def get_rpv(self) -> RuntimePublishedValue:
         """Returns the Runtime Published Value (RPV) definition attached to this entry"""

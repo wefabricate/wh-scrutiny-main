@@ -41,6 +41,7 @@ class Datastore:
     global_watch_callbacks: List[WatchCallback]
     global_unwatch_callbacks: List[WatchCallback]
     target_update_request_queue: "List[UpdateTargetRequest]"
+    unresolved_address_entries: Dict[WatchableType, Dict[str, DatastoreEntry]]
 
     MAX_ENTRY: int = 1000000
 
@@ -50,11 +51,13 @@ class Datastore:
         self.global_unwatch_callbacks = []  # When somebody stops watching an entry, these callbacks are called
 
         self.entries = {}
+        self.unresolved_address_entries = {}
         self.watcher_map = {}
         self.displaypath2idmap = {}
         self.target_update_request_queue = []
         for entry_type in WatchableType.all():
             self.entries[entry_type] = {}
+            self.unresolved_address_entries[entry_type] = {}
             self.watcher_map[entry_type] = {}
             self.displaypath2idmap[entry_type] = {}
 
@@ -103,8 +106,22 @@ class Datastore:
                 raise KeyError('Alias ID %s (%s) refer to entry ID %s (%s) that is not in the datastore' %
                                (entry.get_id(), entry.get_display_path(), resolved_entry.get_id(), resolved_entry.get_display_path()))
 
+        # keep track of all entries that need pointer resolving
+        if entry.has_resolvable_address() is False:
+            self.unresolved_address_entries[entry.get_type()][entry.get_id()] = entry
+
         self.entries[entry.get_type()][entry.get_id()] = entry
         self.displaypath2idmap[entry.get_type()][entry.get_display_path()] = entry.get_id()
+
+    def resolved_pointer_entries(self):
+        """ Resolving pointers to base types """
+        for entry_type in self.unresolved_address_entries:
+            for entry_id in self.unresolved_address_entries[entry_type]:
+                pointer_path = self.unresolved_address_entries[entry_type][entry_id].get_base_path()
+                pointer_entry = self.get_entry_by_display_path(pointer_path)
+                self.unresolved_address_entries[entry_type][entry_id].set_pointer_variable(pointer_entry)
+                # del self.unresolved_address_entries[entry_type][entry_id]
+
 
     def get_entry(self, entry_id: str) -> DatastoreEntry:
         """ Fetch a datastore entry by its ID"""

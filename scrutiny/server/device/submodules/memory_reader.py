@@ -82,16 +82,24 @@ class DataStoreEntrySortableByAddress:
         return False
 
     def __lt__(self, other: "DataStoreEntrySortableByAddress") -> bool:
-        return self.entry.get_address() < other.entry.get_address()
+        if self.entry.has_resolvable_address() and other.entry.has_resolvable_address():
+            return self.entry.get_address() < other.entry.get_address()
+        return False
 
     def __le__(self, other: "DataStoreEntrySortableByAddress") -> bool:
-        return self.entry.get_address() <= other.entry.get_address()
+        if self.entry.has_resolvable_address() and other.entry.has_resolvable_address():
+            return self.entry.get_address() <= other.entry.get_address()
+        return False
 
     def __gt__(self, other: "DataStoreEntrySortableByAddress") -> bool:
-        return self.entry.get_address() > other.entry.get_address()
+        if self.entry.has_resolvable_address() and other.entry.has_resolvable_address():
+            return self.entry.get_address() > other.entry.get_address()
+        return False
 
     def __ge__(self, other: "DataStoreEntrySortableByAddress") -> bool:
-        return self.entry.get_address() >= other.entry.get_address()
+        if self.entry.has_resolvable_address() and other.entry.has_resolvable_address():
+            return self.entry.get_address() >= other.entry.get_address()
+        return False
 
 
 class DataStoreEntrySortableByRpvId:
@@ -367,16 +375,21 @@ class MemoryReader:
             candidate_entry = self.watched_var_entries_sorted_by_address[self.memory_read_cursor].entry
             must_skip = False
 
-            # Check for forbidden region. They disallow read and write
-            is_in_forbidden_region = False
-            candidate_region = MemoryRegion(start=candidate_entry.get_address(), size=candidate_entry.get_size())
-            for forbidden_region in self.forbidden_regions:
-                if candidate_region.touches(forbidden_region):
-                    is_in_forbidden_region = True
-                    break
-
-            if is_in_forbidden_region:
+            # check if it is resolvable
+            if candidate_entry.has_resolvable_address() is False:
                 must_skip = True
+
+            if must_skip is False:
+                # Check for forbidden region. They disallow read and write
+                is_in_forbidden_region = False
+                candidate_region = MemoryRegion(start=candidate_entry.get_address(), size=candidate_entry.get_size())
+                for forbidden_region in self.forbidden_regions:
+                    if candidate_region.touches(forbidden_region):
+                        is_in_forbidden_region = True
+                        break
+
+                if is_in_forbidden_region:
+                    must_skip = True
 
             # Check if must skip
             if must_skip:

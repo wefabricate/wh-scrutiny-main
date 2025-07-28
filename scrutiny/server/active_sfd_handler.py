@@ -148,6 +148,7 @@ class ActiveSFDHandler:
                 except Exception as e:
                     tools.log_exception(self.logger, e, f"Error in SFD Load callback.", str_level=logging.CRITICAL)
 
+            self.datastore.resolved_pointer_entries()
         else:
             if verbose:
                 self.logger.warning('No SFD file installed for device with firmware ID %s' % firmware_id)

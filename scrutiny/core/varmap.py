@@ -31,6 +31,8 @@ class VariableEntry(TypedDict, total=False):
     bitoffset: int
     bitsize: int
     enum: int
+    base: str # Only available for dereferenced pointers
+    offset: int # Only available for dereferenced pointers
 
 
 # TODO : This class requires more work and unit tests
@@ -59,6 +61,7 @@ class VarMap:
                         file = file.decode('utf8')
                     content = json.loads(file)
 
+                content['variables']['/global/myNotPointerTarget*'] = {'type_id': 3, 'base' : '/global/myNotPointer', 'offset': 0}
                 self.validate_json(content)
 
                 if content['endianness'].lower().strip() == 'little':
@@ -237,7 +240,9 @@ class VarMap:
             endianness=self.endianness,
             bitsize=self.get_bitsize(vardef),
             bitoffset=self.get_bitoffset(vardef),
-            enum=self.get_enum(vardef)
+            enum=self.get_enum(vardef),
+            base=self.get_base(vardef),
+            offset=self.get_offset(vardef)
         )
 
     def has_var(self, fullname: str) -> bool:
@@ -263,8 +268,10 @@ class VarMap:
         typename = self.typemap[type_id]['type']
         return EmbeddedDataType[typename]  # Enums support square brackets
 
-    def get_addr(self, vardef: VariableEntry) -> int:
-        return vardef['addr']
+    def get_addr(self, vardef: VariableEntry) -> Optional[int]:
+        if 'addr' in vardef:
+            return vardef['addr']
+        return None
 
     def get_var_def(self, fullname: str) -> VariableEntry:
         if not self.has_var(fullname):
@@ -288,6 +295,16 @@ class VarMap:
                 raise Exception("Unknown enum ID %s" % enum_id)
             enum_def = self.enums[enum_id]
             return EmbeddedEnum.from_def(enum_def)
+        return None
+
+    def get_base(self, vardef: VariableEntry) -> Optional[str]:
+        if 'base' in vardef:
+            return vardef['base']
+        return None
+
+    def get_offset(self, vardef: VariableEntry) -> Optional[int]:
+        if 'offset' in vardef:
+            return vardef['offset']
         return None
 
     def get_enum_by_name(self, name: str) -> Generator[EmbeddedEnum, None, None]:

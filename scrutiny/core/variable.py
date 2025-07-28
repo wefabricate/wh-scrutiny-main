@@ -207,31 +207,39 @@ class Variable:
     name: str
     vartype: EmbeddedDataType
     path_segments: List[str]
-    location: VariableLocation
+    location: Optional[VariableLocation]
     endianness: Endianness
     bitsize: Optional[int]
     bitfield: bool
     bitoffset: Optional[int]
     enum: Optional[EmbeddedEnum]
+    base: str # maybe should be a Variable
+    offset: int
 
     def __init__(self,
                  name: str,
                  vartype: EmbeddedDataType,
                  path_segments: List[str],
-                 location: Union[int, VariableLocation],
+                 location: Optional[Union[int, VariableLocation]],
                  endianness: Endianness,
                  bitsize: Optional[int] = None,
                  bitoffset: Optional[int] = None,
-                 enum: Optional[EmbeddedEnum] = None
+                 enum: Optional[EmbeddedEnum] = None,
+                 base: Optional[str] = None,
+                 offset: int = 0
                  ) -> None:
 
         self.name = name
         self.vartype = vartype
         self.path_segments = path_segments
-        if isinstance(location, VariableLocation):
-            self.location = location.copy()
+        # fix location for pointers
+        if location is not None:
+            if isinstance(location, VariableLocation):
+                self.location = location.copy()
+            else:
+                self.location = VariableLocation(location)
         else:
-            self.location = VariableLocation(location)
+            self.location = None # todo
         self.endianness = endianness
 
         var_size_bits = self.vartype.get_size_bit()
@@ -256,6 +264,9 @@ class Variable:
         self.bitsize = bitsize
         self.bitoffset = bitoffset
         self.enum = enum
+
+        self.base = base
+        self.offset = offset
 
     def decode(self, data: Union[bytes, bytearray]) -> Encodable:
         """Decode the binary content in memory to a python value"""
@@ -317,9 +328,11 @@ class Variable:
         """Returns a list of segments representing the path to the variable. Exclude the variable name"""
         return self.path_segments
 
-    def get_address(self) -> int:
+    def get_address(self) -> Optional[int]:
         """Get the variable address"""
-        return self.location.get_address()
+        if self.location is not None:
+            return self.location.get_address()
+        return None
 
     def has_enum(self) -> bool:
         """True if an enum is attached to that variable"""
@@ -333,6 +346,10 @@ class Variable:
         """Returns the size of the variable in bytes"""
         size_bit = self.vartype.get_size_bit()
         return int(size_bit / 8)
+
+    def get_offset(self) -> Optional[int]:
+        """Returns the offset of the variable in bytes"""
+        return self.offset
 
     def is_bitfield(self) -> bool:
         """Returns True if this variable is a bitfield"""
