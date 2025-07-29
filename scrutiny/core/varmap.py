@@ -61,7 +61,6 @@ class VarMap:
                         file = file.decode('utf8')
                     content = json.loads(file)
 
-                content['variables']['/global/myNotPointerTarget*'] = {'type_id': 3, 'base' : '/global/myNotPointer', 'offset': 0}
                 self.validate_json(content)
 
                 if content['endianness'].lower().strip() == 'little':
@@ -232,18 +231,25 @@ class VarMap:
         segments, name = self.make_segments(fullname)
         vardef = self.get_var_def(fullname)
 
-        return Variable(
-            name=name,
-            vartype=self.get_type(vardef),
-            path_segments=segments,
-            location=self.get_addr(vardef),
-            endianness=self.endianness,
-            bitsize=self.get_bitsize(vardef),
-            bitoffset=self.get_bitoffset(vardef),
-            enum=self.get_enum(vardef),
-            base=self.get_base(vardef),
-            offset=self.get_offset(vardef)
-        )
+        #TODO test enums
+        try:
+            self.get_enum(vardef)
+        except Exception:
+            pass
+        else:
+
+            return Variable(
+                name=name,
+                vartype=self.get_type(vardef),
+                path_segments=segments,
+                location=self.get_addr(vardef),
+                endianness=self.endianness,
+                bitsize=self.get_bitsize(vardef),
+                bitoffset=self.get_bitoffset(vardef),
+                enum=self.get_enum(vardef),
+                base=self.get_base(vardef),
+                offset=self.get_offset(vardef)
+            )
 
     def has_var(self, fullname: str) -> bool:
         return fullname in self.variables
@@ -319,4 +325,7 @@ class VarMap:
 
     def iterate_vars(self) -> Generator[Tuple[str, Variable], None, None]:
         for fullname in self.variables:
-            yield (fullname, self.get_var(fullname))
+            var = self.get_var(fullname)
+            if var is not None:
+                yield (fullname, var)
+            # yield (fullname, )

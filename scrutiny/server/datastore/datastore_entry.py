@@ -273,7 +273,7 @@ class DatastoreVariableEntry(DatastoreEntry):
         """Return the referenced variable address"""
         if self.variable_def.get_address() is not None:
             return self.variable_def.get_address()
-        elif self.pointer_variable.get_value() != 0:
+        elif self.pointer_variable.get_value() != 0 and self.variable_def.get_offset() is not None:
             return self.pointer_variable.get_value() + self.variable_def.get_offset()
         return None
 

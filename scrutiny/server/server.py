@@ -50,7 +50,7 @@ DEFAULT_CONFIG: ServerConfig = {
         }
     },
     'device': {
-        'response_timeout': 1.0,
+        'response_timeout': 5.0,
         'link_type': 'none',
         'link_config': {
         }

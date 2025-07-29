@@ -226,7 +226,7 @@ class Variable:
                  bitoffset: Optional[int] = None,
                  enum: Optional[EmbeddedEnum] = None,
                  base: Optional[str] = None,
-                 offset: int = 0
+                 offset: Optional[int] = 0
                  ) -> None:
 
         self.name = name
@@ -267,6 +267,8 @@ class Variable:
 
         self.base = base
         self.offset = offset
+        if self.base is not None and self.offset is None:
+            self.offset = 0
 
     def decode(self, data: Union[bytes, bytearray]) -> Encodable:
         """Decode the binary content in memory to a python value"""
