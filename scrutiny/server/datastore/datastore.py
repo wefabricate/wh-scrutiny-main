@@ -175,6 +175,21 @@ class Datastore:
         for callback in self.global_watch_callbacks:
             callback(entry_id)
 
+        try:
+            if entry.has_resolvable_address() is False:
+                # Add pointer entry
+                base = entry.variable_def.base
+                base_entry = self.get_entry_by_display_path(base)
+                if base_entry.get_id() not in self.watcher_map[base_entry.get_type()]:
+                    self.watcher_map[base_entry.get_type()][base_entry.get_id()] = set()
+                    for callback in self.global_watch_callbacks:
+                        callback(base_entry.entry_id)
+
+        except:
+            pass
+
+
+
         if isinstance(entry, DatastoreAliasEntry):
             # Alias are tricky. When we subscribe to them, another hidden subscription to the referenced entry is made here
             alias_value_change_callback = functools.partial(self.alias_value_change_callback, watching_entry=entry)
