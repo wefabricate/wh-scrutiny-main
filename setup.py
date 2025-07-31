@@ -50,7 +50,7 @@ def get_gui_assets():
 
 
 setup(
-    name="scrutinydebugger",    # Pypi name
+    name="wh-scrutinydebugger",    # Pypi name
     python_requires='>=3.9',
     description='Scrutiny Debugger Python framework',
     url='https://github.com/scrutinydebugger/scrutiny-main',
