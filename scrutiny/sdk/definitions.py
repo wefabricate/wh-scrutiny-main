@@ -127,7 +127,7 @@ class ValueStatus(enum.Enum):
 
         return error
 
-type DeviceLinkType = str
+DeviceLinkType = str
 # class DeviceLinkType(enum.Enum):
 #     """(Enum) The type of communication link used between the server and the device"""
 #
@@ -669,7 +669,7 @@ class LinkUserInterfaceField:
     default: Optional[str]
     min_value: Optional[int]
     max_value: Optional[int]
-    options: Optional[[str]]
+    options: Optional[list[str]]
 
 
 @dataclass(frozen=True)
