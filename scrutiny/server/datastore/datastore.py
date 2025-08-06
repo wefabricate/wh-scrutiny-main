@@ -118,8 +118,11 @@ class Datastore:
         for entry_type in self.unresolved_address_entries:
             for entry_id in self.unresolved_address_entries[entry_type]:
                 pointer_path = self.unresolved_address_entries[entry_type][entry_id].get_base_path()
-                pointer_entry = self.get_entry_by_display_path(pointer_path)
-                self.unresolved_address_entries[entry_type][entry_id].set_pointer_variable(pointer_entry)
+                if pointer_path is not None:
+                    pointer_entry = self.get_entry_by_display_path(pointer_path)
+                    self.unresolved_address_entries[entry_type][entry_id].set_pointer_variable(pointer_entry)
+                else:
+                    self.logger.warning(f'Could not resolve pointer entry for entry id {entry_id}')
                 # del self.unresolved_address_entries[entry_type][entry_id]
 
 
